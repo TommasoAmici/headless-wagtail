@@ -6,11 +6,12 @@ from django.db import models
 from django.http.response import HttpResponseRedirect, JsonResponse
 from django.utils.module_loading import import_string
 from wagtail.admin.edit_handlers import FieldPanel, StreamFieldPanel
+from wagtail.contrib.table_block.blocks import TableBlock
 from wagtail.core.fields import StreamField
 from wagtail.core.models import Page
-from wagtail.images.blocks import ImageChooserBlock
+from wagtail.images.edit_handlers import ImageChooserPanel
 
-from .blocks import CustomRichTextBlock
+from .blocks import CustomImageChooserBlock, CustomRichTextBlock
 
 
 class BasePage(Page):
@@ -41,23 +42,43 @@ class BasePage(Page):
         else:
             full_path = request.get_full_path()
             return HttpResponseRedirect(
-                urllib.parse.urljoin(settings.BASE_URL, full_path.replace("/api", ""))
+                urllib.parse.urljoin(settings.BASE_URL, full_path)
             )
 
 
-class ArticlePage(BasePage):
-    serializer_class = "home.serializers.ArticlePageSerializer"
-
-    summary = models.CharField(max_length=300)
+class HomePage(BasePage):
+    serializer_class = "home.serializers.HomePageSerializer"
     body = StreamField(
         [
             ("paragraph", CustomRichTextBlock()),
-            ("image", ImageChooserBlock(icon="image")),
         ],
     )
 
     content_panels = [
         FieldPanel("title"),
-        FieldPanel("summary", widget=forms.Textarea(attrs={"rows": "4"})),
+        StreamFieldPanel("body"),
+    ]
+
+
+class ArticlePage(BasePage):
+    serializer_class = "home.serializers.ArticlePageSerializer"
+    feed_image = models.ForeignKey(
+        "wagtailimages.Image",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    body = StreamField(
+        [
+            ("paragraph", CustomRichTextBlock()),
+            ("image", CustomImageChooserBlock(icon="image")),
+            ("table", TableBlock()),
+        ],
+    )
+
+    content_panels = [
+        FieldPanel("title"),
+        ImageChooserPanel("feed_image"),
         StreamFieldPanel("body"),
     ]
